@@ -1,14 +1,40 @@
-name: my first workflows
+name: Pull and Test Public Nginx Docker Image
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-    first_job:
-        runs-on: ubuntu-latest
-        steps:
-        - name: welcome message
-          run: echo "my first github action job"
-        - name: list files
-          run: ls
-        - name: Read files
-          run: ../cat README.md
+  pull-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Pull Nginx Docker image
+      run: docker pull nginx:latest
+
+    - name: Run Nginx container
+      run: |
+        docker run -d --name my-nginx-container -p 8080:80 nginx:latest
+        sleep 10  # Wait for Nginx to start
+
+    - name: Test Nginx with curl
+      run: |
+        curl -I http://localhost:8080
+        if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q 200; then
+          echo "Nginx is running successfully!"
+        else
+          echo "Nginx failed to start."
+          exit 1
+        fi
+
+    - name: Clean up
+      run: |
+        docker stop my-nginx-container
+        docker rm my-nginx-container
